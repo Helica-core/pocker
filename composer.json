@@ -16,16 +16,11 @@
     },
     "require-dev": {
     },
-    "conflict": {
-    },
-    "suggest": {
-    },
     "autoload": {
-        "psr-4":{
-            "helica\\File\\":"src/"
-        }
+        "files":["src/pocker.php"]
     },
     "minimum-stability": "dev",
+    "prefer-stable": true,
     "extra": {
         "branch-alias": {
             "dev-master": "0.1-dev"
