@@ -5,16 +5,16 @@ developing~
 # usage
 ```php
 <?php
-requier 'helica/pocker'
+
+require 'vendor/autoload.php';
 
 $pocker = Pocker::getInstance();
 
 $pocker->getInfo();
-
 ```
 
 # install
 recommand composer
 
-> composer require helica/pocker
+> composer require "helica/pocker @dev"
 
