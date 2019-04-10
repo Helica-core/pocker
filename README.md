@@ -16,5 +16,5 @@ $pocker->getInfo();
 # install
 recommand composer
 
-> composer ...
+> composer require helica/pocker
 
