@@ -1,0 +1,36 @@
+{
+    "name": "helica/pocker",
+    "type": "library",
+    "description": "A naive PHP client for docker engine API",
+    "keywords": ["php", "docker"],
+    "homepage": "https://www.cnblogs.com/helica",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "helica",
+            "email": "hicali.lex@yandex.com"
+        }
+    ],
+    "require": {
+        "php": "^5.5.9|>=7.0.8",
+        "guzzlehttp":"^6.0",
+        "symfony/var-dumper":"*"
+    },
+    "require-dev": {
+    },
+    "conflict": {
+    },
+    "suggest": {
+    },
+    "autoload": {
+        "psr-4":{
+            "helica\\File\\":"src/"
+        }
+    },
+    "minimum-stability": "dev",
+    "extra": {
+        "branch-alias": {
+            "dev-master": "3.3-dev"
+        }
+    }
+}
