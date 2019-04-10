@@ -1,5 +1,4 @@
 <?php
-require '../vendor/autoload.php';
 
 class Pocker{
     private static $instance = null;
