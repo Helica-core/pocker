@@ -1,6 +1,6 @@
 # pocker
-A naive PHP client for docker engine API
-developing~
+A naive PHP client for docker engine API  
+in developing~
 
 # usage
 ```php
