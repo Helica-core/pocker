@@ -1,6 +1,5 @@
 # pocker
 A naive PHP client for docker engine API  
-in developing~
 
 # usage
 ```php
@@ -9,6 +8,8 @@ in developing~
 require 'vendor/autoload.php';
 
 $pocker = Pocker::getInstance();
+
+$pocker->setConfig($Ip, $Port, $ApiVersion);
 
 $pocker->getInfo();
 ```
