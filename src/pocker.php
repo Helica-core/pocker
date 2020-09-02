@@ -1,13 +1,12 @@
 <?php
-require '../vendor/autoload.php';
 
 class Pocker{
     private static $instance = null;
     private $guzzleClient = null;
 
-    private $host = '192.168.111.193';
+    private $host = '127.0.0.1';
     private $port = '4201';
-    private $apiVersion = 'v1.39';
+    private $apiVersion = 'v1.40';
 
     private function __construct(){
         $this->guzzleClient = new GuzzleHttp\Client();
@@ -28,41 +27,62 @@ class Pocker{
     private function requestDocker($path, $method, $data=null){
         //TODO: chack 
         //      api version control
-        if($data != null){
-            $res = $this->guzzleClient->request($method, $this->getURLBase() . $path, ['json' => $data]);
-        }else{
-            $res = $this->guzzleClient->request($method, $this->getURLBase() . $path);
+        try{
+            if($data != null){
+                $res = $this->guzzleClient->request($method, $this->getURLBase() . $path, ['json' => $data]);
+            }else{
+                $res = $this->guzzleClient->request($method, $this->getURLBase() . $path);
+            }
+        }catch(Exception $e){
+            echo '[!] Guzzle Error \n' . $e->getMessage();
+            #var_dump($e);
+            return null;
         }
-        echo 'status code: ' . $res->getStatusCode()."\n";
 
-        $stream = $res->getBody();
-        echo "content:\n".$stream->getContents()."\n";
-
-        //TODO: error handle
-        return json_decode($res->getBody());
+        return $this->returnData($res);
     }
 
     private function streamRequestDocker($path, $method, $data=null){
-        $res = $this->guzzleClient->request($method, $this->getURLBase() . $path, ['stream' => true, 'json' => $data]);
-        $body = $res->getBody();
+        try{
+            $res = $this->guzzleClient->request($method, $this->getURLBase() . $path, ['stream' => true, 'json' => $data]);
 
-        echo 'status code: ' . $res->getStatusCode()."\n";
+        }catch (Exception $e){
+            echo '[!] Guzzle Error \n' . $e->getMessage();
+            #var_dump($e);
+            return null;
+        }
         $stream = $res->getBody();
 
-        echo $stream->isWritable() ? "write able \n" : "can't write \n";
-        echo "content:\n".$stream->getContents()."\n";
-
+        $data = '';
         while(!$stream->eof()){
-            echo $stream->read(1024);
-            //$body->write('echo hello world');
-            sleep(1);
+            $data .= $stream->read(1024);
+            sleep(0.1);
         }
+
+        $rtn['code'] = $res->getStatusCode();
+        $rtn['data'] = $data;
+
+        return $rtn;
+    }
+
+    private function returnData($res){
+        $rtn = array();
+        $rtn['code'] = $res->getStatusCode();
+        $rtn['data'] = json_decode($res->getBody());
+
+        return $rtn;
     }
 
     public function getInfo(){
         $method = 'GET';
         $path = '/info';
-        return $this->requestDocker($path, $method);
+        $rtn = $this->requestDocker($path, $method);
+
+        if($rtn['code'] == 200){
+            $rtn['success'] = true;
+        }
+
+        return $rtn;
     }
 
     public function setConfig($host, $port, $apiVersion){
@@ -71,8 +91,31 @@ class Pocker{
         $this->apiVersion = $apiVersion;
     }
 
-    public function buildImage(){
-        
+    public function buildImage($dockerfilePath, $tag){    //通过传文件的方式 tar.gz
+        $path = '/build?t='.$tag.'&networkmode=bridge';
+        $method = 'POST';
+
+        $res = $this->guzzleClient->request($method, $this->getURLBase() . $path, [
+            'headers' => [
+                'Content-Type' => 'application/tar'
+            ],
+            'body' => fopen($dockerfilePath, 'r'),
+            'stream' => true
+        ]);
+        $stream = $res->getBody();
+        $data = '';
+        while(!$stream->eof()){
+            $data .= $stream->read(1024);
+            sleep(0.1);
+        }
+
+        $rtn['code'] = $res->getStatusCode();
+        $rtn['data'] = $data;
+
+        if($rtn['code'] == 200){
+            $rtn['success'] = true;
+        }
+        return $rtn;
     }
 
     public function listImage(){
@@ -114,27 +157,67 @@ class Pocker{
         $data->Image = $imageName;
         $data->Cmd = $cmd;
 
-        return $this->requestDocker($path, $method, $data);
+        $rtn = $this->requestDocker($path, $method, $data);
+        if($rtn['code'] == 201){
+            $rtn['success'] = true;
+        }
+
+        return $rtn;
     }
 
     public function startContainer($containerId){
         $path   = "/containers/$containerId/start";
         $method = 'POST';
         $data   = null;
+
+        $res = $this->requestDocker($path, $method);
+        if($res['code'] == 204){
+            $res['success'] = true;
+        }
+
+        return $res;
+    }
+
+    public function stopContainer($containerId){
+        $path   = "/containers/$containerId/stop?t=1";
+        $method = 'POST';
+        $data   = null;
+        $rtn = $this->requestDocker($path, $method);
+
+        if($rtn['code'] == 204 || $rtn['code'] == 304){
+            $rtn['success'] = true;
+        }
+        return $rtn;
+    }
+
+    public function killContainer($containerId){
+        $path   = "/containers/$containerId/kill";
+        $method = 'POST';
+        $data   = null;
         
         return $this->requestDocker($path, $method);
     }
 
-    public function stopContainer(){
+    public function removeContainer($containerId){
+        $path   = "/$containerId";
+        $method = 'DELETE';
+        $rtn = $this->requestDocker($path, $method);
 
+        if($rtn['code'] == 204){
+            $rtn['success'] = true;
+        }
+        return $rtn;
     }
+    public function inspectContainer($containerId){
+        $path   = "/containers/$containerId/json";
+        $method = 'GET';
+        $data   = null;
 
-    public function killContainer(){
-
-    }
-
-    public function inspectContainer(){
-
+        $rtn = $this->requestDocker($path, $method);
+        if($rtn['code'] == 200){
+            $rtn['success'] = true;
+        }
+        return $rtn;
     }
 
     /*
@@ -145,8 +228,6 @@ class Pocker{
     public function attachContainer($containerId){
         $path   = "/containers/$containerId/attach";
         $method = "POST";
-        $data = json_decode('{
-        }');
 
         $this->streamRequestDocker($path, $method);
     }
@@ -171,18 +252,16 @@ class Pocker{
         $method = 'POST';
         $data = json_decode('{
             "AttachStdin":false,
-            "AttachStdout":false,
-            "AttachStderr":false, 
+            "AttachStdout":true,
+            "AttachStderr":true, 
             "Tty":true,
-            "Cmd": ["/bin/sh", "/root/x.sh"]
+            "Cmd": ""
         }');
-
-        //$data->Cmd = [$cmd];
-        var_dump($data);
+        $data->Cmd = $cmd;
 
         //create exec object
         $res = $this->requestDocker($path, $method, $data);
-        $execId = $res->Id;
+        $execId = $res['data']->Id;
 
         //exec
         $path = "/exec/$execId/start";
@@ -191,15 +270,16 @@ class Pocker{
             "Detach": false,
             "Tty": true
         }');
-
-        $this->streamRequestDocker($path, $method, $data);
+        $res = $this->streamRequestDocker($path, $method, $data);
+        if($res['code'] == 200){
+            $res['success'] = true;
+        }
 
         //inspect
         $path = "/exec/$execId/json";
         $method = "GET";
+        $res['inspect'] = $this->requestDocker($path, $method);
 
-        //$res = $this->requestDocker($path, $method);
-
-        //echo $res;
+        return $res;
     }
 }
